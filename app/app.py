@@ -94,48 +94,68 @@ def training_plot(history):
     fig.tight_layout();buffer=io.BytesIO();fig.savefig(buffer,format="png",dpi=150,bbox_inches="tight");plt.close(fig)
     return buffer.getvalue()
 def screening_report(result):
-    """Create a one-page, educational PDF report in memory."""
+    """Create a clean, one-page educational PDF report in memory."""
     import textwrap
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
     from matplotlib.patches import Circle,Ellipse,FancyBboxPatch
-    fig=plt.figure(figsize=(8.27,11.69),facecolor="white")
-    fig.add_artist(plt.Line2D([.085,.085],[.925,.985],color="#a6d834",linewidth=5,solid_capstyle="round"))
-    fig.add_artist(Ellipse((.105,.96),.030,.016,transform=fig.transFigure,facecolor="none",edgecolor="#829f32",linewidth=1.4))
-    fig.add_artist(Circle((.105,.96),.0045,transform=fig.transFigure,facecolor="#a6d834",edgecolor="none"))
-    fig.text(.132,.976,"RETINASCREEN  ·  UNIVERSITY RESEARCH DEMO",fontsize=9.5,color="#718d2b",weight="bold",va="top")
-    fig.text(.11,.946,"Retinal image screening report",fontsize=20,color="#30342c",weight="bold",va="top")
-    fig.text(.11,.912,f"Model prediction: Grade {result['grade']} · {result['class_name']}     |     Demo flag: {('Referable' if result['referable'] else 'Non-referable')}",fontsize=11,color="#55594f",va="top")
-    report_heading(fig,.875,"i","What is diabetic retinopathy?")
-    intro="Diabetes can damage the small blood vessels in the retina. Early diabetic retinopathy may have no symptoms, so a retinal photo or a reassuring result here cannot replace an eye examination. A comprehensive dilated exam lets an eye-care professional assess the retina and other eye conditions."
-    fig.text(.12,.849,textwrap.fill(intro,91),fontsize=10.8,color="#55594f",va="top",linespacing=1.3)
-    report_heading(fig,.775,"5","The five severity levels")
-    fig.text(.085,.748,"Brief descriptions of the clinical scale behind the dataset labels; not verified findings for this image.",fontsize=9.7,color="#666a60",va="top")
-    for i,(name,description) in enumerate(zip(CLASSES,GRADE_GUIDE)):
-        y=.718-i*.025
-        fig.add_artist(Circle((.098,y-.006),.008,transform=fig.transFigure,facecolor="#eff6d8",edgecolor="#d8e6b5",linewidth=.5))
-        fig.text(.098,y-.006,str(i),fontsize=7.3,weight="bold",color="#617a25",ha="center",va="center")
-        fig.text(.12,y,f"{name}",fontsize=10.5,weight="bold",color="#30342c",va="top")
-        fig.text(.31,y,description,fontsize=10.2,color="#55594f",va="top")
-        if i<4:fig.add_artist(plt.Line2D([.12,.91],[y-.014,y-.014],color="#edf0e7",linewidth=.6))
-    report_heading(fig,.575,"↑","Model scores by severity")
-    values=result["probabilities"]
-    probability_ax=fig.add_axes([.15,.32,.76,.22]);draw_probability_axes(probability_ax,values,scale=1.05,show_title=False)
-    report_heading(fig,.272,"◉","What influenced this result?")
-    fig.text(.12,.244,"Grad-CAM sensitivity map",fontsize=10,color="#666a60",va="top")
-    image_width=.32;image_height=image_width*(8.27/11.69)*(result["gradcam"].height/result["gradcam"].width)
-    if image_height>.16:image_height=.16;image_width=image_height*(11.69/8.27)*(result["gradcam"].width/result["gradcam"].height)
-    cam=fig.add_axes([.085,.08,image_width,image_height]);cam.imshow(result["gradcam"],aspect="equal");cam.axis("off")
-    follow_card=FancyBboxPatch((.45,.055),.465,.225,transform=fig.transFigure,boxstyle="round,pad=.008,rounding_size=.012",facecolor="#f8faef",edgecolor="#edf1dd",linewidth=.8,zorder=-1)
-    fig.add_artist(follow_card)
-    report_heading(fig,.272,"+","Professional follow-up context",x=.46)
-    fig.text(.495,.244,textwrap.fill(follow_up_note(int(result["grade"])),43),fontsize=10.2,color="#45493f",va="top",linespacing=1.35)
-    urgent="New dark floaters, streaks, or sudden vision changes need prompt professional attention regardless of this model result."
-    fig.text(.495,.105,textwrap.fill(urgent,43),fontsize=9.2,weight="bold",color="#45493f",va="top",linespacing=1.25)
-    caveat="Grad-CAM highlights model influence, not lesions or clinical reasoning. Scores are uncalibrated. This research prototype is not clinically validated and cannot diagnose or set urgency. Educational references: NEI, Diabetic Retinopathy; AAO, Diabetic Retinopathy Preferred Practice Pattern (2025)."
-    fig.text(.085,.047,textwrap.fill(caveat,120),fontsize=8.6,color="#666a60",va="top",linespacing=1.2)
+    fig=plt.figure(figsize=(8.27,11.69),facecolor="#fbfcf8")
+    ink="#30382f";muted="#687166";lime="#a6d834"
+    def panel(x,y,w,h,color,edge="#e8eddf"):
+        fig.add_artist(FancyBboxPatch((x,y),w,h,transform=fig.transFigure,boxstyle="round,pad=.008,rounding_size=.018",facecolor=color,edgecolor=edge,linewidth=.8,zorder=-1))
+    # Brand and title
+    fig.add_artist(plt.Line2D([.075,.075],[.934,.978],color=lime,linewidth=5,solid_capstyle="round"))
+    fig.add_artist(Ellipse((.098,.958),.028,.015,transform=fig.transFigure,facecolor="none",edgecolor="#829f32",linewidth=1.4))
+    fig.add_artist(Circle((.098,.958),.004,transform=fig.transFigure,facecolor=lime,edgecolor="none"))
+    fig.text(.122,.974,"RETINASCREEN  ·  UNIVERSITY RESEARCH DEMO",fontsize=9,color="#718d2b",weight="bold",va="top")
+    fig.text(.122,.946,"Retinal image screening report",fontsize=19,color=ink,weight="bold",va="top")
+    # Verdict receives the strongest visual emphasis.
+    panel(.075,.805,.85,.105,"#eff7da",edge="#dcebb9")
+    fig.text(.105,.887,"MODEL VERDICT",fontsize=8.5,color="#718d2b",weight="bold",va="top")
+    fig.text(.105,.858,f"Grade {result['grade']}  ·  {result['class_name']}",fontsize=17,color=ink,weight="bold",va="top")
+    flag="REFERABLE" if result["referable"] else "NON-REFERABLE"
+    flag_color="#8b5c16" if result["referable"] else "#56731f"
+    fig.text(.895,.855,flag,fontsize=9,color=flag_color,weight="bold",ha="right",va="top",bbox=dict(boxstyle="round,pad=.55",fc="#fff8df" if result["referable"] else "#f7faed",ec="none"))
+    fig.text(.105,.823,"A model output for learning; it is not a diagnosis or a measure of urgency.",fontsize=9.5,color=muted,va="top")
+    # Compact context and severity scale
+    fig.text(.085,.782,"ABOUT THIS SCREEN",fontsize=8.5,color="#718d2b",weight="bold",va="top")
+    intro="Diabetes can damage retinal blood vessels. Early changes may have no symptoms; screening photos do not replace an eye exam."
+    fig.text(.085,.757,textwrap.fill(intro,95),fontsize=9.5,color=ink,va="top",linespacing=1.25)
+    panel(.075,.642,.85,.074,"#f0f5fb",edge="#e2eaf2")
+    fig.text(.095,.699,"FIVE-GRADE SCALE",fontsize=8,color="#627c93",weight="bold",va="top")
+    names=["No DR","Mild","Moderate","Severe","Proliferative"]
+    for i,name in enumerate(names):
+        x=.105+i*.163
+        fig.add_artist(Circle((x,.666),.010,transform=fig.transFigure,facecolor="#fff",edgecolor="#b7cbd8",linewidth=.8))
+        fig.text(x,.666,str(i),fontsize=7.5,color="#587286",weight="bold",ha="center",va="center")
+        fig.text(x+.017,.666,name,fontsize=8.2,color=ink,va="center")
+    fig.text(.095,.648,"Dataset severity labels; not confirmed findings for this image.",fontsize=8.2,color=muted,va="center")
+    # Fixed-scale chart in its own lightly tinted section.
+    panel(.075,.363,.85,.252,"#ffffff",edge="#e6ebdf")
+    fig.text(.095,.595,"MODEL SCORES",fontsize=8.5,color="#718d2b",weight="bold",va="top")
+    fig.text(.095,.572,"Uncalibrated scores across the five classes",fontsize=9,color=muted,va="top")
+    probability_ax=fig.add_axes([.13,.386,.75,.164]);draw_probability_axes(probability_ax,result["probabilities"],scale=.9,show_title=False)
+    probability_ax.set_ylabel("");probability_ax.tick_params(axis="x",labelsize=8,pad=3);probability_ax.tick_params(axis="y",labelsize=8,pad=2)
+    # Separate image explanation and human follow-up panels.
+    panel(.075,.075,.395,.263,"#f0f7e4",edge="#e3edcf")
+    panel(.49,.075,.435,.263,"#fff7e8",edge="#f0e6cf")
+    fig.text(.098,.316,"IMAGE EXPLANATION",fontsize=8.5,color="#718d2b",weight="bold",va="top")
+    fig.text(.098,.292,"Grad-CAM highlights model influence, not lesions.",fontsize=8.5,color=muted,va="top")
+    im=result["gradcam"]; aspect=im.width/im.height
+    box_w,box_h=.345,.185
+    image_w=min(box_w,box_h*aspect);image_h=image_w/aspect
+    cam=fig.add_axes([.10+(box_w-image_w)/2,.087+(box_h-image_h)/2,image_w,image_h])
+    cam.imshow(im);cam.axis("off")
+    fig.text(.515,.316,"WHAT TO DO WITH THIS",fontsize=8.5,color="#92713a",weight="bold",va="top")
+    guidance=follow_up_note(int(result["grade"]))
+    fig.text(.515,.287,textwrap.fill(guidance,53),fontsize=9.6,color=ink,va="top",linespacing=1.35)
+    urgent="Sudden vision changes or new floaters need prompt professional attention, regardless of this result."
+    fig.text(.515,.14,textwrap.fill(urgent,48),fontsize=8.7,color="#775d35",weight="bold",va="top",linespacing=1.25)
+    # One quiet footer keeps the educational boundary visible without competing.
+    fig.text(.085,.048,"Research prototype · not clinically validated · cannot diagnose or set urgency. Keep clinician-recommended dilated eye exams.",fontsize=8.1,color=muted,va="top")
+    fig.text(.085,.030,"Educational references: National Eye Institute · American Academy of Ophthalmology DR Preferred Practice Pattern (2025)",fontsize=7.7,color="#858b80",va="top")
     buffer=io.BytesIO()
-    with PdfPages(buffer) as pdf:pdf.savefig(fig,facecolor="white")
+    with PdfPages(buffer) as pdf:pdf.savefig(fig,facecolor=fig.get_facecolor())
     plt.close(fig);return buffer.getvalue()
 @st.cache_resource(show_spinner="Loading EfficientNet-B0…")
 def cached_model(path,modified):
