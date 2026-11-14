@@ -30,6 +30,7 @@ st.markdown("""
 .hero h1{color:#30342c;margin:.35rem 0 .25rem;font-size:1.85rem}.hero p{color:#666a60;margin:0;max-width:780px}
 .note{background:#f8faef;border:1px solid #edf1dd;border-left:4px solid #b9e34c;padding:.72rem 1rem;border-radius:9px;color:#494d42;margin:.6rem 0 1rem}
 .card{background:#fff;border:1px solid #e9ecdf;border-radius:16px;padding:1.15rem;box-shadow:0 5px 18px #25291c06}.muted{color:#74776d;font-size:.88rem}
+.why-card{background:#f8faef;border:1px solid #edf1dd;border-radius:14px;padding:1rem;margin:.8rem 0;color:#494d42;line-height:1.55}
 .grade{color:#30342c;font-size:1.6rem;font-weight:750}.pill{display:inline-block;padding:.3rem .65rem;border-radius:99px;font-weight:700;background:#f0f7d9;color:#5b741d}
 .eyebrow{color:#748d31;text-transform:uppercase;letter-spacing:.12em;font-weight:750;font-size:.72rem}
 .upload-card{background:#fbfcf7;border:1px solid #edf0e4;border-radius:16px;padding:1.1rem 1.2rem}
@@ -53,11 +54,9 @@ history=load_json(REPORTS/"training_history.json")
 ready=CHECKPOINT.is_file()
 
 with st.sidebar:
-    st.markdown("### ◉ RetinaScreen");st.caption("DR severity · research prototype");st.divider()
-    st.markdown("**Model**");st.write("EfficientNet-B0 · five grades");st.write("Dataset · IDRiD")
-    if ready:st.success("Trained checkpoint ready")
-    else:st.warning("Checkpoint missing");st.code("python -m src.pipeline train",language="powershell")
-    st.caption("Uploads are processed in memory. Not a diagnosis.")
+    st.markdown("### ◉ RetinaScreen");st.caption("University research demo");st.divider()
+    st.markdown("A small study of retinal images and five-level DR grading.")
+    st.caption("For learning and demonstration only. Not for medical decisions.")
 
 st.markdown("""<div class="hero"><div class="eyebrow">A small research project · IDRiD</div><h1>Looking closer, learning more.</h1><p>A five-grade retinal image study, with its results and model reasoning made easier to explore.</p></div><div class="note"><b>Made for learning.</b> This university prototype is experimental and must not guide medical care.</div>""",unsafe_allow_html=True)
 overview,screen,performance,about=st.tabs(["Overview","Screen an image","Performance","About"])
@@ -128,12 +127,16 @@ with screen:
             with left:
                 flag="Referable · grade 2–4" if result["referable"] else "Non-referable · grade 0–1"
                 st.markdown(f'<div class="card"><div class="muted">Predicted severity</div><div class="grade">Grade {result["grade"]} · {result["class_name"]}</div><p><span class="pill">{flag}</span></p><span class="muted">Processed in {result["elapsed"]:.2f} s · uncalibrated probabilities</span></div>',unsafe_allow_html=True)
+                ranked=sorted(enumerate(result["probabilities"]),key=lambda pair:pair[1],reverse=True)
+                first,second=ranked[:2]
+                st.markdown(f'<div class="why-card"><div class="eyebrow">Why this grade?</div><br>The classifier selected <b>{CLASSES[first[0]]}</b> because it had the highest model score ({pct(first[1])}). The next closest class was <b>{CLASSES[second[0]]}</b> ({pct(second[1])}). The referral badge follows the project rule: grades 2–4 are marked referable.<br><br><span class="muted">These scores are not calibrated certainty. The image map shows influential regions, not a list of detected lesions.</span></div>',unsafe_allow_html=True)
                 st.markdown("#### Class probabilities")
                 st.bar_chart(pd.DataFrame({"Probability":result["probabilities"]},index=[f"{i} · {n}" for i,n in enumerate(CLASSES)]),color="#86ad35",height=270)
             with right:
-                st.markdown("#### Grad-CAM sensitivity map")
+                st.markdown("#### What influenced this output?")
+                st.caption("Grad-CAM · post-hoc visual explanation")
                 st.image(result["gradcam"],caption="Red overlay marks regions with greater gradient influence on the selected class.",width=480)
-                st.caption("Grad-CAM does not prove highlighted areas are lesions or establish clinical reasoning.")
+                st.caption("This heatmap can help inspect the model's focus, but it does not prove highlighted areas are lesions or explain clinical reasoning.")
 
 with performance:
     st.subheader("Held-out performance")
@@ -175,8 +178,9 @@ with about:
     left,right=st.columns(2,gap="large")
     with left:
         with st.container(border=True):
-            st.markdown("#### Model notes")
-            st.markdown("**Architecture** · ImageNet EfficientNet-B0 with five outputs.  \n**Input** · 224 × 224, ImageNet normalization.  \n**Training** · AdamW, inverse-square-root class weighting, seed 42, early stopping on validation loss.  \n**Explanation** · Grad-CAM at the final feature block.")
+            st.markdown("#### Model at a glance")
+            status="Trained checkpoint available" if ready else "Checkpoint missing · train before screening"
+            st.markdown(f"**Status** · {status}  \n**Architecture** · ImageNet EfficientNet-B0 with five outputs.  \n**Input** · 224 × 224, ImageNet normalization.  \n**Training** · AdamW, inverse-square-root class weighting, seed 42, early stopping on validation loss.  \n**Explanation** · Grad-CAM at the final feature block.")
     with right:
         with st.container(border=True):
             st.markdown("#### Data and care")
