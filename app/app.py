@@ -16,7 +16,9 @@ st.set_page_config(page_title="RetinaScreen | DR Research",page_icon="◉",layou
 st.markdown("""
 <style>
 .stApp{background:radial-gradient(ellipse at 9% 4%,#eaf5ef 0,transparent 38%),radial-gradient(ellipse at 94% 62%,#edf3fa 0,transparent 38%),linear-gradient(135deg,#f8fbf9 0%,#f5f8fc 100%);color:#30342c}
-.block-container{max-width:1280px;padding-top:1.3rem;padding-bottom:3rem}
+header[data-testid="stHeader"]{background:transparent!important;box-shadow:none!important}
+header[data-testid="stHeader"] [data-testid="stToolbar"]{background:transparent!important}
+.block-container{max-width:1280px;padding-top:2.1rem;padding-bottom:3rem}
 [data-testid="stSidebar"]{background:rgba(248,251,249,.92);border-right:1px solid #e4ece7}
 [data-testid="stMetric"]{background:#fff;border:1px solid #e9ecdf;padding:.9rem 1rem;border-radius:14px;box-shadow:0 4px 18px #25291c08}
 [data-testid="stMetricLabel"] p{color:#70736a!important;font-size:.82rem}[data-testid="stMetricValue"]{color:#30342c;font-weight:700}
