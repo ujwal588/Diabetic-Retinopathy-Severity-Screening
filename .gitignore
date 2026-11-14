@@ -1,0 +1,21 @@
+# Retinal data stays local; commit only the reproducible ID manifest.
+data/**
+!data/splits/
+!data/splits/*.csv
+artifacts/checkpoints/*
+artifacts/gradcam/*
+reports/test_metrics.json
+reports/test_predictions.csv
+reports/test_confusion_matrix.png
+reports/training_history.json
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,7 @@
+image_id,split,duplicate_of,duplicate_split
+IDRiD_028,train,IDRiD_327,train
+IDRiD_279,train,IDRiD_079,train
+IDRiD_021,validation,IDRiD_391,validation
+IDRiD_073,validation,IDRiD_375,train
+IDRiD_045,validation,IDRiD_333,train
+IDRiD_064,test,IDRiD_118,train
