@@ -1,0 +1,3 @@
+loss_weighting,checkpoint,n_validation,accuracy,macro_f1,quadratic_weighted_kappa,recall_grade_0,recall_grade_1,recall_grade_2,recall_grade_3,recall_grade_4
+inverse_sqrt_weighted,best_model.pt,80,0.6625,0.5076348884381339,0.7941409342834521,0.8888888888888888,0.0,0.64,0.6,0.4
+unweighted,best_model_unweighted.pt,80,0.6375,0.5660520373611897,0.7844619591442819,0.8888888888888888,0.3333333333333333,0.64,0.4,0.4
