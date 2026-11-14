@@ -15,8 +15,12 @@ REPORTS=ROOT/"reports"
 st.set_page_config(page_title="RetinaScreen | DR Research",page_icon="◉",layout="wide")
 st.markdown("""
 <style>
-.stApp{background:#fff;color:#30342c}.block-container{max-width:1280px;padding-top:1.3rem;padding-bottom:3rem}
-[data-testid="stSidebar"]{background:#fff;border-right:1px solid #edf0e7}
+.stApp{background:radial-gradient(ellipse at 9% 4%,#eaf5ef 0,transparent 38%),radial-gradient(ellipse at 94% 62%,#edf3fa 0,transparent 38%),linear-gradient(135deg,#f8fbf9 0%,#f5f8fc 100%);color:#30342c;position:relative}
+.stApp:before,.stApp:after{position:fixed;z-index:0;pointer-events:none;color:#9bbcb0;font-family:Arial,sans-serif;font-weight:400;opacity:.22}
+.stApp:before{content:"✚";font-size:2.25rem;right:3.2%;top:34%}
+.stApp:after{content:"◉";font-size:2.6rem;left:2.2%;bottom:12%;color:#94b4c2}
+.block-container{max-width:1280px;padding-top:1.3rem;padding-bottom:3rem;position:relative;z-index:1}
+[data-testid="stSidebar"]{background:rgba(248,251,249,.92);border-right:1px solid #e4ece7}
 [data-testid="stMetric"]{background:#fff;border:1px solid #e9ecdf;padding:.9rem 1rem;border-radius:14px;box-shadow:0 4px 18px #25291c08}
 [data-testid="stMetricLabel"] p{color:#70736a!important;font-size:.82rem}[data-testid="stMetricValue"]{color:#30342c;font-weight:700}
 .stTabs [data-baseweb="tab-list"]{gap:.45rem;border-bottom:1px solid #eceee5}
@@ -137,8 +141,8 @@ def screening_report(result):
     probability_ax=fig.add_axes([.13,.386,.75,.164]);draw_probability_axes(probability_ax,result["probabilities"],scale=.9,show_title=False)
     probability_ax.set_ylabel("");probability_ax.tick_params(axis="x",labelsize=8,pad=3);probability_ax.tick_params(axis="y",labelsize=8,pad=2)
     # Separate image explanation and human follow-up panels.
-    panel(.075,.075,.395,.263,"#f0f7e4",edge="#e3edcf")
-    panel(.49,.075,.435,.263,"#fff7e8",edge="#f0e6cf")
+    panel(.075,.075,.385,.263,"#f0f7e4",edge="#e3edcf")
+    panel(.515,.075,.410,.263,"#fff7e8",edge="#f0e6cf")
     fig.text(.098,.316,"IMAGE EXPLANATION",fontsize=8.5,color="#718d2b",weight="bold",va="top")
     fig.text(.098,.292,"Grad-CAM highlights model influence, not lesions.",fontsize=8.5,color=muted,va="top")
     im=result["gradcam"]; aspect=im.width/im.height
@@ -146,11 +150,11 @@ def screening_report(result):
     image_w=min(box_w,box_h*aspect);image_h=image_w/aspect
     cam=fig.add_axes([.10+(box_w-image_w)/2,.087+(box_h-image_h)/2,image_w,image_h])
     cam.imshow(im);cam.axis("off")
-    fig.text(.515,.316,"WHAT TO DO WITH THIS",fontsize=8.5,color="#92713a",weight="bold",va="top")
+    fig.text(.538,.316,"WHAT TO DO WITH THIS",fontsize=8.5,color="#92713a",weight="bold",va="top")
     guidance=follow_up_note(int(result["grade"]))
-    fig.text(.515,.287,textwrap.fill(guidance,53),fontsize=9.6,color=ink,va="top",linespacing=1.35)
+    fig.text(.538,.287,textwrap.fill(guidance,47),fontsize=9.6,color=ink,va="top",linespacing=1.35)
     urgent="Sudden vision changes or new floaters need prompt professional attention, regardless of this result."
-    fig.text(.515,.14,textwrap.fill(urgent,48),fontsize=8.7,color="#775d35",weight="bold",va="top",linespacing=1.25)
+    fig.text(.538,.14,textwrap.fill(urgent,43),fontsize=8.7,color="#775d35",weight="bold",va="top",linespacing=1.25)
     # One quiet footer keeps the educational boundary visible without competing.
     fig.text(.085,.048,"Research prototype · not clinically validated · cannot diagnose or set urgency. Keep clinician-recommended dilated eye exams.",fontsize=8.1,color=muted,va="top")
     fig.text(.085,.030,"Educational references: National Eye Institute · American Academy of Ophthalmology DR Preferred Practice Pattern (2025)",fontsize=7.7,color="#858b80",va="top")
