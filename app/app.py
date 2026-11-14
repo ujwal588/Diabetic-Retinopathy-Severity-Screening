@@ -15,30 +15,31 @@ REPORTS=ROOT/"reports"
 st.set_page_config(page_title="RetinaScreen | DR Research",page_icon="◉",layout="wide")
 st.markdown("""
 <style>
-.stApp{background:radial-gradient(ellipse at 9% 4%,#eaf5ef 0,transparent 38%),radial-gradient(ellipse at 94% 62%,#edf3fa 0,transparent 38%),linear-gradient(135deg,#f8fbf9 0%,#f5f8fc 100%);color:#30342c}
+.stApp{background:radial-gradient(ellipse at 8% 5%,#edf6d9 0,transparent 38%),radial-gradient(ellipse at 94% 67%,#f1f5df 0,transparent 40%),linear-gradient(135deg,#fbfcf5 0%,#f5f8eb 100%);color:#30342c}
 header[data-testid="stHeader"]{background:transparent!important;box-shadow:none!important}
 header[data-testid="stHeader"] [data-testid="stToolbar"]{background:transparent!important}
 .block-container{max-width:1280px;padding-top:2.1rem;padding-bottom:3rem}
-[data-testid="stSidebar"]{background:rgba(248,251,249,.92);border-right:1px solid #e4ece7}
-[data-testid="stMetric"]{background:#fff;border:1px solid #e9ecdf;padding:.9rem 1rem;border-radius:14px;box-shadow:0 4px 18px #25291c08}
+[data-testid="stSidebar"]{background:rgba(250,252,244,.95);border-right:1px solid #e2e9d1}
+[data-testid="stMetric"]{background:linear-gradient(145deg,#fff 55%,#fbfdf3);border:1px solid #e1e8d3;padding:.9rem 1rem;border-radius:14px;box-shadow:0 7px 22px #43542712}
 [data-testid="stMetricLabel"] p{color:#70736a!important;font-size:.82rem}[data-testid="stMetricValue"]{color:#30342c;font-weight:700}
-.stTabs [data-baseweb="tab-list"]{gap:.45rem;border-bottom:1px solid #eceee5}
-.stTabs [aria-selected="true"]{color:#343a2e!important;border-bottom:3px solid #a6d834!important}
+.stTabs [data-baseweb="tab-list"]{gap:.45rem;border-bottom:1px solid #e1e8d4}
+.stTabs [aria-selected="true"]{color:#343a2e!important;border-bottom:3px solid #a6d834!important;background:#f2f7e4!important;border-radius:9px 9px 0 0}
 .stButton>button{background:#b9e34c;color:#303820;border:1px solid #a9d335;border-radius:10px;font-weight:700;min-height:2.8rem;transition:transform .15s,box-shadow .15s}
 .stButton>button:hover{background:#c8ed68;border-color:#a9d335;color:#303820;box-shadow:0 5px 14px #a6d83438;transform:translateY(-1px)}
 [data-testid="stFileUploader"] section{border:1px dashed #b4d65e;background:#fff;border-radius:14px}
-.hero{position:relative;overflow:hidden;background:#fff;border:1px solid #edf0e7;border-left:7px solid #b9e34c;border-radius:20px;padding:1.2rem 1.7rem;margin:.25rem 0 .7rem;box-shadow:0 8px 28px #25291c08}
+.hero{position:relative;overflow:hidden;background:linear-gradient(115deg,#fff 55%,#fbfdf3);border:1px solid #e5ebd8;border-left:7px solid #b9e34c;border-radius:20px;padding:1.2rem 1.7rem;margin:.25rem 0 .7rem;box-shadow:0 10px 30px #43542712}
 .hero:after{content:"";position:absolute;width:160px;height:160px;border:20px solid #eff7d8;border-radius:50%;right:48px;top:-66px;pointer-events:none}
 .hero:before{content:"✚";position:absolute;right:2.5rem;bottom:1rem;color:#dce9d4;font-size:1.65rem;pointer-events:none}
 .hero .eyebrow{color:#718d2b;text-transform:uppercase;letter-spacing:.13em;font-weight:750;font-size:.72rem}
 .hero h1{color:#30342c;margin:.35rem 0 .25rem;font-size:1.85rem}.hero p{color:#666a60;margin:0;max-width:780px}
-.note{background:#f8faef;border:1px solid #edf1dd;border-left:4px solid #b9e34c;padding:.72rem 1rem;border-radius:9px;color:#494d42;margin:.6rem 0 1rem}
-.card{background:#fff;border:1px solid #e9ecdf;border-radius:16px;padding:1.15rem;box-shadow:0 5px 18px #25291c06}.muted{color:#74776d;font-size:.88rem}
-.why-card{background:#f8faef;border:1px solid #edf1dd;border-radius:14px;padding:1rem;margin:.8rem 0;color:#494d42;line-height:1.55}
-.guidance-card{background:#fff;border:1px solid #e8ebdf;border-left:4px solid #a6d834;border-radius:12px;padding:.9rem 1rem;margin:.65rem 0;color:#494d42;line-height:1.55;font-size:.92rem}
+.note{background:#f7faeb;border:1px solid #e8edda;border-left:4px solid #b9e34c;padding:.72rem 1rem;border-radius:9px;color:#494d42;margin:.6rem 0 1rem;box-shadow:0 5px 16px #4354270b}
+.card{background:linear-gradient(145deg,#fff 58%,#fbfdf4);border:1px solid #e1e8d3;border-radius:16px;padding:1.15rem;box-shadow:0 8px 24px #43542712}.muted{color:#74776d;font-size:.88rem}
+.why-card{background:linear-gradient(135deg,#f7faeb,#fff);border:1px solid #e5ebd7;border-radius:14px;padding:1rem;margin:.8rem 0;color:#494d42;line-height:1.55;box-shadow:0 7px 20px #43542710}
+.guidance-card{background:linear-gradient(135deg,#fff,#fbfdf3);border:1px solid #e2e9d5;border-left:4px solid #a6d834;border-radius:12px;padding:.9rem 1rem;margin:.65rem 0;color:#494d42;line-height:1.55;font-size:.92rem;box-shadow:0 6px 18px #4354270d}
 .grade{color:#30342c;font-size:1.6rem;font-weight:750}.pill{display:inline-block;padding:.3rem .65rem;border-radius:99px;font-weight:700;background:#f0f7d9;color:#5b741d}
 .eyebrow{color:#748d31;text-transform:uppercase;letter-spacing:.12em;font-weight:750;font-size:.72rem}
-.upload-card{background:#fbfcf7;border:1px solid #edf0e4;border-radius:16px;padding:1.1rem 1.2rem}
+.upload-card{background:linear-gradient(140deg,#fff,#f8fbed);border:1px solid #e1e8d3;border-radius:16px;padding:1.1rem 1.2rem;box-shadow:0 8px 22px #43542710}
+[data-testid="stVerticalBlockBorderWrapper"]{background:rgba(255,255,255,.78);border-radius:16px;box-shadow:0 7px 22px #43542710}
 .step-dot{display:inline-block;background:#eaf5c9;color:#617d1c;border-radius:50%;width:1.65rem;height:1.65rem;text-align:center;line-height:1.65rem;font-weight:750;margin-right:.45rem}
 .small-note{color:#74776d;font-size:.82rem;line-height:1.5}
 </style>
@@ -176,7 +177,7 @@ with st.sidebar:
     st.markdown("A small study of retinal images and five-level DR grading.")
     st.caption("For learning and demonstration only. Not for medical decisions.")
 
-st.markdown("""<div class="hero"><div class="eyebrow">A small research project · IDRiD</div><h1>Looking closer, learning more.</h1><p>A five-grade retinal image study, with its results and model reasoning made easier to explore.</p></div><div class="note"><b>Made for learning.</b> This university prototype is experimental and must not guide medical care.</div>""",unsafe_allow_html=True)
+st.markdown("""<div class="hero"><div class="eyebrow">University research · IDRiD</div><h1>Looking closer, learning more.</h1><p>A five-grade retinal image study, with its results and model reasoning made easier to explore.</p></div><div class="note"><b>Research prototype.</b> Experimental results; not for clinical decisions.</div>""",unsafe_allow_html=True)
 overview,screen,performance,about=st.tabs(["Overview","Screen an image","Performance","About"])
 
 with overview:
