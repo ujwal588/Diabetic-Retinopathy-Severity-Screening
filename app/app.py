@@ -57,21 +57,27 @@ def follow_up_note(grade):
     if grade>=2:
         return "This demo places the image in its referable group. If this is a real image from someone with diabetes, arrange review by an eye-care professional. This model cannot diagnose, determine urgency, or choose a follow-up interval."
     return "This demo places the image in its non-referable group, which does not rule out diabetic retinopathy. People with diabetes should keep their clinician-recommended dilated eye exams; the National Eye Institute advises a comprehensive dilated exam at least yearly."
-def draw_probability_axes(ax,probabilities,scale=1.0):
+def draw_probability_axes(ax,probabilities,scale=1.0,show_title=True):
     indices=list(range(len(CLASSES)));labels=[f"{i} · {name}" for i,name in enumerate(CLASSES)]
     grade=max(indices,key=lambda i:probabilities[i])
-    bars=ax.barh(indices,probabilities,color=["#a6d834" if i==grade else "#d8ddcb" for i in indices],height=.62)
-    ax.set_yticks(indices,labels);ax.invert_yaxis();ax.set_xlim(0,1.12);ax.set_xticks([0,.25,.5,.75,1.0],["0%","25%","50%","75%","100%"])
-    ax.set_title("Five-class model scores",loc="left",fontsize=13*scale,fontweight="bold",color="#30342c",pad=10*scale)
-    ax.set_xlabel("Uncalibrated score",fontsize=10*scale,color="#55594f");ax.tick_params(axis="y",labelsize=10*scale,colors="#30342c");ax.tick_params(axis="x",labelsize=9*scale,colors="#666a60")
-    ax.grid(axis="x",color="#e8ebdf",linewidth=.8);ax.set_axisbelow(True);ax.spines[["top","right","left"]].set_visible(False)
-    for bar,value in zip(bars,probabilities):ax.text(min(value+.018,1.015),bar.get_y()+bar.get_height()/2,f"{value:.1%}",va="center",ha="left",fontsize=9*scale,color="#45493f")
+    short_labels=[f"{i}\n{name}" for i,name in enumerate(CLASSES)]
+    bars=ax.bar(indices,probabilities,color=["#a6d834" if i==grade else "#d8ddcb" for i in indices],width=.62)
+    ax.set_xticks(indices,short_labels);ax.set_ylim(0,1.15);ax.set_yticks([0,.25,.5,.75,1.0],["0%","25%","50%","75%","100%"])
+    if show_title:ax.set_title("Five-class model scores",loc="left",fontsize=13*scale,fontweight="bold",color="#30342c",pad=10*scale)
+    ax.set_ylabel("Uncalibrated score",fontsize=10*scale,color="#55594f");ax.tick_params(axis="x",labelsize=9*scale,colors="#30342c",pad=5);ax.tick_params(axis="y",labelsize=9*scale,colors="#666a60")
+    ax.grid(axis="y",color="#e8ebdf",linewidth=.8);ax.set_axisbelow(True);ax.spines[["top","right"]].set_visible(False)
+    for bar,value in zip(bars,probabilities):ax.text(bar.get_x()+bar.get_width()/2,min(value+.025,1.08),f"{value:.1%}",va="bottom",ha="center",fontsize=9*scale,color="#45493f")
 def probability_plot(probabilities):
-    """Render the same fixed-scale horizontal probability chart for UI and PDF."""
+    """Render the same fixed-scale vertical probability chart for UI and PDF."""
     import matplotlib.pyplot as plt
-    fig,ax=plt.subplots(figsize=(6.2,3.45),dpi=130);draw_probability_axes(ax,probabilities)
+    fig,ax=plt.subplots(figsize=(6.2,4.0),dpi=130);draw_probability_axes(ax,probabilities)
     fig.tight_layout();buffer=io.BytesIO();fig.savefig(buffer,format="png",dpi=160,bbox_inches="tight");plt.close(fig)
     return buffer.getvalue()
+def report_heading(fig,y,symbol,title,x=.085):
+    from matplotlib.patches import Circle
+    fig.add_artist(Circle((x+.012,y-.007),.012,transform=fig.transFigure,facecolor="#f1f8db",edgecolor="#b7d956",linewidth=.8,zorder=2))
+    fig.text(x+.012,y-.007,symbol,fontsize=8.5,weight="bold",color="#617a25",ha="center",va="center",zorder=3)
+    fig.text(x+.035,y,title,fontsize=12.5,weight="bold",color="#30342c",va="top")
 def training_plot(history):
     """Render fixed-scale training curves as a non-interactive PNG."""
     import matplotlib.pyplot as plt
@@ -92,33 +98,42 @@ def screening_report(result):
     import textwrap
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
+    from matplotlib.patches import Circle,Ellipse,FancyBboxPatch
     fig=plt.figure(figsize=(8.27,11.69),facecolor="white")
     fig.add_artist(plt.Line2D([.085,.085],[.925,.985],color="#a6d834",linewidth=5,solid_capstyle="round"))
-    fig.text(.11,.976,"RETINASCREEN  ·  UNIVERSITY RESEARCH DEMO",fontsize=9.5,color="#718d2b",weight="bold",va="top")
+    fig.add_artist(Ellipse((.105,.96),.030,.016,transform=fig.transFigure,facecolor="none",edgecolor="#829f32",linewidth=1.4))
+    fig.add_artist(Circle((.105,.96),.0045,transform=fig.transFigure,facecolor="#a6d834",edgecolor="none"))
+    fig.text(.132,.976,"RETINASCREEN  ·  UNIVERSITY RESEARCH DEMO",fontsize=9.5,color="#718d2b",weight="bold",va="top")
     fig.text(.11,.946,"Retinal image screening report",fontsize=20,color="#30342c",weight="bold",va="top")
     fig.text(.11,.912,f"Model prediction: Grade {result['grade']} · {result['class_name']}     |     Demo flag: {('Referable' if result['referable'] else 'Non-referable')}",fontsize=11,color="#55594f",va="top")
-    fig.text(.085,.875,"What is diabetic retinopathy?",fontsize=13,weight="bold",color="#30342c",va="top")
+    report_heading(fig,.875,"i","What is diabetic retinopathy?")
     intro="Diabetes can damage the small blood vessels in the retina. Early diabetic retinopathy may have no symptoms, so a retinal photo or a reassuring result here cannot replace an eye examination. A comprehensive dilated exam lets an eye-care professional assess the retina and other eye conditions."
-    fig.text(.085,.849,textwrap.fill(intro,95),fontsize=10.8,color="#55594f",va="top",linespacing=1.3)
-    fig.text(.085,.775,"The five severity levels",fontsize=13,weight="bold",color="#30342c",va="top")
+    fig.text(.12,.849,textwrap.fill(intro,91),fontsize=10.8,color="#55594f",va="top",linespacing=1.3)
+    report_heading(fig,.775,"5","The five severity levels")
     fig.text(.085,.748,"Brief descriptions of the clinical scale behind the dataset labels; not verified findings for this image.",fontsize=9.7,color="#666a60",va="top")
     for i,(name,description) in enumerate(zip(CLASSES,GRADE_GUIDE)):
-        y=.718-i*.027
-        fig.text(.09,y,f"{i}  {name}",fontsize=10.6,weight="bold",color="#30342c",va="top")
+        y=.718-i*.025
+        fig.add_artist(Circle((.098,y-.006),.008,transform=fig.transFigure,facecolor="#eff6d8",edgecolor="#d8e6b5",linewidth=.5))
+        fig.text(.098,y-.006,str(i),fontsize=7.3,weight="bold",color="#617a25",ha="center",va="center")
+        fig.text(.12,y,f"{name}",fontsize=10.5,weight="bold",color="#30342c",va="top")
         fig.text(.31,y,description,fontsize=10.2,color="#55594f",va="top")
-        if i<4:fig.add_artist(plt.Line2D([.09,.91],[y-.013,y-.013],color="#edf0e7",linewidth=.65))
+        if i<4:fig.add_artist(plt.Line2D([.12,.91],[y-.014,y-.014],color="#edf0e7",linewidth=.6))
+    report_heading(fig,.575,"↑","Model scores by severity")
     values=result["probabilities"]
-    probability_ax=fig.add_axes([.24,.385,.67,.17]);draw_probability_axes(probability_ax,values,scale=1.12)
-    fig.text(.085,.335,"What influenced this result?",fontsize=12.5,weight="bold",color="#30342c",va="top")
-    fig.text(.085,.31,"Grad-CAM sensitivity map",fontsize=10,color="#666a60",va="top")
-    cam=fig.add_axes([.085,.13,.34,.17]);cam.imshow(result["gradcam"],aspect="auto");cam.axis("off")
-    fig.text(.47,.335,"Professional follow-up context",fontsize=12.5,weight="bold",color="#30342c",va="top")
-    fig.text(.47,.31,textwrap.fill(follow_up_note(int(result["grade"])),52),fontsize=10.2,color="#45493f",va="top",linespacing=1.35)
+    probability_ax=fig.add_axes([.15,.32,.76,.22]);draw_probability_axes(probability_ax,values,scale=1.05,show_title=False)
+    report_heading(fig,.272,"◉","What influenced this result?")
+    fig.text(.12,.244,"Grad-CAM sensitivity map",fontsize=10,color="#666a60",va="top")
+    image_width=.32;image_height=image_width*(8.27/11.69)*(result["gradcam"].height/result["gradcam"].width)
+    if image_height>.16:image_height=.16;image_width=image_height*(11.69/8.27)*(result["gradcam"].width/result["gradcam"].height)
+    cam=fig.add_axes([.085,.08,image_width,image_height]);cam.imshow(result["gradcam"],aspect="equal");cam.axis("off")
+    follow_card=FancyBboxPatch((.45,.055),.465,.225,transform=fig.transFigure,boxstyle="round,pad=.008,rounding_size=.012",facecolor="#f8faef",edgecolor="#edf1dd",linewidth=.8,zorder=-1)
+    fig.add_artist(follow_card)
+    report_heading(fig,.272,"+","Professional follow-up context",x=.46)
+    fig.text(.495,.244,textwrap.fill(follow_up_note(int(result["grade"])),43),fontsize=10.2,color="#45493f",va="top",linespacing=1.35)
     urgent="New dark floaters, streaks, or sudden vision changes need prompt professional attention regardless of this model result."
-    fig.text(.47,.16,textwrap.fill(urgent,52),fontsize=9.7,weight="bold",color="#45493f",va="top",linespacing=1.3)
-    caveat="Grad-CAM highlights regions that influenced the model output; it does not detect lesions or provide clinical reasoning. Scores are uncalibrated. This research prototype is not clinically validated and cannot set diagnosis or urgency."
-    fig.text(.085,.09,textwrap.fill(caveat,115),fontsize=9.2,color="#55594f",va="top",linespacing=1.25)
-    fig.text(.085,.04,"Educational sources: National Eye Institute, Diabetic Retinopathy; American Academy of Ophthalmology, Diabetic Retinopathy Preferred Practice Pattern (2025), severity scale.",fontsize=8.2,color="#777a71",va="top",wrap=True)
+    fig.text(.495,.105,textwrap.fill(urgent,43),fontsize=9.2,weight="bold",color="#45493f",va="top",linespacing=1.25)
+    caveat="Grad-CAM highlights model influence, not lesions or clinical reasoning. Scores are uncalibrated. This research prototype is not clinically validated and cannot diagnose or set urgency. Educational references: NEI, Diabetic Retinopathy; AAO, Diabetic Retinopathy Preferred Practice Pattern (2025)."
+    fig.text(.085,.047,textwrap.fill(caveat,120),fontsize=8.6,color="#666a60",va="top",linespacing=1.2)
     buffer=io.BytesIO()
     with PdfPages(buffer) as pdf:pdf.savefig(fig,facecolor="white")
     plt.close(fig);return buffer.getvalue()
@@ -219,7 +234,7 @@ with screen:
                 st.markdown(f'<div class="why-card"><div class="eyebrow">Why this grade?</div><br>The classifier selected <b>{CLASSES[first[0]]}</b> because it had the highest model score ({pct(first[1])}). The next closest class was <b>{CLASSES[second[0]]}</b> ({pct(second[1])}). The referral badge follows the project rule: grades 2–4 are marked referable.<br><br><span class="muted">These scores are not calibrated certainty. The image map shows influential regions, not a list of detected lesions.</span></div>',unsafe_allow_html=True)
                 st.markdown("#### Class probabilities")
                 probability=base64.b64encode(probability_plot(result["probabilities"])).decode("ascii")
-                st.html(f'<img src="data:image/png;base64,{probability}" alt="Fixed-scale horizontal probabilities for all five DR grades" style="display:block;width:100%;height:auto;pointer-events:none;user-select:none;border-radius:8px;">')
+                st.html(f'<img src="data:image/png;base64,{probability}" alt="Fixed-scale vertical scores for all five DR grades" style="display:block;width:100%;height:auto;pointer-events:none;user-select:none;border-radius:8px;">')
                 st.markdown(f'<div class="guidance-card"><b>Professional follow-up context</b><br>{follow_up_note(int(result["grade"]))}</div>',unsafe_allow_html=True)
             with right:
                 st.markdown("#### What influenced this output?")
