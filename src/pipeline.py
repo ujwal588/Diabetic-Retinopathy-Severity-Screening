@@ -97,8 +97,10 @@ def train(args):
     net=model(not args.no_pretrained).to(device)
     counts=frames["train"].label.value_counts().reindex(range(5),fill_value=0).to_numpy()
     if (counts==0).any(): raise ValueError(f"Training split misses class: {counts.tolist()}")
-    weights=torch.tensor(np.sqrt(counts.sum()/counts),dtype=torch.float32,device=device); weights/=weights.mean()
-    loss_fn=nn.CrossEntropyLoss(weight=weights); opt=torch.optim.AdamW(net.parameters(),lr=float(cfg["learning_rate"]),weight_decay=float(cfg["weight_decay"]))
+    class_weights=None
+    if args.loss_weighting=="inverse_sqrt":
+        class_weights=torch.tensor(np.sqrt(counts.sum()/counts),dtype=torch.float32,device=device); class_weights/=class_weights.mean()
+    loss_fn=nn.CrossEntropyLoss(weight=class_weights); opt=torch.optim.AdamW(net.parameters(),lr=float(cfg["learning_rate"]),weight_decay=float(cfg["weight_decay"]))
     out=ROOT/"artifacts"/"checkpoints"; out.mkdir(parents=True,exist_ok=True); best=float("inf"); stale=0; history=[]
     for epoch in range(1,int(cfg["epochs"])+1):
         row={"epoch":epoch}
@@ -114,19 +116,20 @@ def train(args):
         history.append(row); print(f"epoch {epoch}: train loss {row['train_loss']:.4f}; val loss {row['validation_loss']:.4f}; val acc {row['validation_accuracy']:.3f}")
         if row["validation_loss"]<best:
             best=row["validation_loss"]; stale=0
-            torch.save({"model_state":net.state_dict(),"config":cfg,"seed":seed,"best_validation_loss":best},out/"best_model.pt")
+            torch.save({"model_state":net.state_dict(),"config":cfg,"seed":seed,"loss_weighting":args.loss_weighting,"best_validation_loss":best},out/args.checkpoint_name)
         else:
             stale+=1
             if stale>=int(cfg["patience"]): print("Early stopping."); break
-    (ROOT/"reports").mkdir(exist_ok=True); (ROOT/"reports"/"training_history.json").write_text(json.dumps(history,indent=2),encoding="utf-8")
-    print(f"Checkpoint: {out/'best_model.pt'}\nNext: python demo.py --accuracy")
+    (ROOT/"reports").mkdir(exist_ok=True); (ROOT/"reports"/f"training_history_{Path(args.checkpoint_name).stem}.json").write_text(json.dumps(history,indent=2),encoding="utf-8")
+    print(f"Checkpoint: {out/args.checkpoint_name}\nNext: python demo.py --accuracy")
 
-def evaluate(checkpoint=None):
+def evaluate(checkpoint=None, split="test"):
     path=Path(checkpoint or ROOT/"artifacts"/"checkpoints"/"best_model.pt")
     if not path.is_file(): raise FileNotFoundError(f"Train first; missing checkpoint {path}")
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu"); net,ck=load_model(path,device); cfg=ck["config"]
-    rows=manifest(float(cfg["validation_fraction"]),int(ck["seed"]),save=False); test=rows[rows.split=="test"].reset_index(drop=True)
-    loader=DataLoader(Fundus(test,int(cfg["image_size"]),False),batch_size=int(cfg["batch_size"]),shuffle=False,num_workers=0)
+    if split not in ("validation","test"): raise ValueError("split must be validation or test")
+    rows=manifest(float(cfg["validation_fraction"]),int(ck["seed"]),save=False); subset=rows[rows.split==split].reset_index(drop=True)
+    loader=DataLoader(Fundus(subset,int(cfg["image_size"]),False),batch_size=int(cfg["batch_size"]),shuffle=False,num_workers=0)
     ys=[]; ps=[]; names=[]; probs=[]
     with torch.inference_mode():
         for x,y,n in loader:
@@ -134,20 +137,22 @@ def evaluate(checkpoint=None):
     y=np.array(ys); p=np.array(ps); cm=confusion_matrix(y,p,labels=np.arange(5))
     rep=classification_report(y,p,labels=np.arange(5),target_names=CLASSES,output_dict=True,zero_division=0)
     ry=y>=2; rp=p>=2; tp=int((ry&rp).sum()); fn=int((ry&~rp).sum()); tn=int((~ry&~rp).sum()); fp=int((~ry&rp).sum())
-    result={"dataset":"IDRiD","split":"official testing set","n":len(y),"accuracy":float(accuracy_score(y,p)),
+    result={"dataset":"IDRiD","split":"official testing set" if split=="test" else "validation partition","n":len(y),"accuracy":float(accuracy_score(y,p)),
       "macro_f1":float(f1_score(y,p,average="macro",zero_division=0)),"quadratic_weighted_kappa":float(cohen_kappa_score(y,p,weights="quadratic")),
       "per_class":{c:{k:float(rep[c][k]) for k in ("precision","recall","f1-score","support")} for c in CLASSES},
       "referable_definition":"five-class argmax grades 2-4","referable_sensitivity":tp/(tp+fn) if tp+fn else None,
       "referable_specificity":tn/(tn+fp) if tn+fp else None,"referable_confusion":{"tn":tn,"fp":fp,"fn":fn,"tp":tp}}
-    out=ROOT/"reports"; out.mkdir(exist_ok=True); (out/"test_metrics.json").write_text(json.dumps(result,indent=2),encoding="utf-8")
+    out=ROOT/"reports"; out.mkdir(exist_ok=True)
+    prefix="test" if split=="test" else f"validation_{path.stem}"
+    (out/f"{prefix}_metrics.json").write_text(json.dumps(result,indent=2),encoding="utf-8")
     import csv
-    with (out/"test_predictions.csv").open("w",newline="",encoding="utf-8") as f:
+    with (out/f"{prefix}_predictions.csv").open("w",newline="",encoding="utf-8") as f:
         w=csv.writer(f); w.writerow(["image_id","true_grade","predicted_grade",*[f"prob_grade_{i}" for i in range(5)]])
         w.writerows([[names[i],int(y[i]),int(p[i]),*map(float,probs[i])] for i in range(len(y))])
     import matplotlib.pyplot as plt
-    fig,ax=plt.subplots(figsize=(7,6)); ax.imshow(cm,cmap="Blues"); ax.set(xticks=range(5),yticks=range(5),xticklabels=range(5),yticklabels=range(5),xlabel="Predicted grade",ylabel="True grade",title="IDRiD official test confusion matrix")
+    fig,ax=plt.subplots(figsize=(7,6)); ax.imshow(cm,cmap="Blues"); ax.set(xticks=range(5),yticks=range(5),xticklabels=range(5),yticklabels=range(5),xlabel="Predicted grade",ylabel="True grade",title=f"IDRiD {split} confusion matrix")
     for (i,j),v in np.ndenumerate(cm): ax.text(j,i,str(v),ha="center",va="center")
-    fig.tight_layout(); fig.savefig(out/"test_confusion_matrix.png",dpi=160); plt.close(fig)
+    fig.tight_layout(); fig.savefig(out/f"{prefix}_confusion_matrix.png",dpi=160); plt.close(fig)
     print(json.dumps(result,indent=2)); return result
 
 def predict(image_path,checkpoint=None):
@@ -172,11 +177,13 @@ def predict(image_path,checkpoint=None):
 def main():
     ap=argparse.ArgumentParser(); sub=ap.add_subparsers(dest="cmd",required=True)
     t=sub.add_parser("train"); t.add_argument("--config",default=str(ROOT/"configs"/"baseline.yaml")); t.add_argument("--no-pretrained",action="store_true")
-    e=sub.add_parser("evaluate"); e.add_argument("--checkpoint")
+    t.add_argument("--loss-weighting",choices=("inverse_sqrt","none"),default="inverse_sqrt")
+    t.add_argument("--checkpoint-name",default="best_model.pt")
+    e=sub.add_parser("evaluate"); e.add_argument("--checkpoint"); e.add_argument("--split",choices=("validation","test"),default="test")
     p=sub.add_parser("predict"); p.add_argument("--image",required=True); p.add_argument("--checkpoint")
     a=ap.parse_args()
     if a.cmd=="train": train(a)
-    elif a.cmd=="evaluate": evaluate(a.checkpoint)
+    elif a.cmd=="evaluate": evaluate(a.checkpoint,a.split)
     else: predict(a.image,a.checkpoint)
 
 if __name__=="__main__": main()
