@@ -155,24 +155,40 @@ def evaluate(checkpoint=None, split="test"):
     fig.tight_layout(); fig.savefig(out/f"{prefix}_confusion_matrix.png",dpi=160); plt.close(fig)
     print(json.dumps(result,indent=2)); return result
 
+def predict_image(image,net,cfg,device):
+    """Run local inference and Grad-CAM without persisting an uploaded image."""
+    image=image.convert("RGB")
+    x=transform(int(cfg["image_size"]),False)(image).unsqueeze(0).to(device)
+    with torch.inference_mode():
+        probs=net(x).softmax(1)[0].cpu().tolist()
+    grade=int(np.argmax(probs)); activations=[]; gradients=[]; layer=net.features[-1]
+    handle_a=layer.register_forward_hook(lambda m,i,o:activations.append(o))
+    handle_g=layer.register_full_backward_hook(lambda m,gi,go:gradients.append(go[0]))
+    try:
+        with torch.enable_grad():
+            net.zero_grad(set_to_none=True); net(x)[0,grade].backward()
+    finally:
+        handle_a.remove(); handle_g.remove()
+    cam=torch.relu((gradients[-1][0].mean((1,2),keepdim=True)*activations[-1][0]).sum(0))
+    cam=torch.nn.functional.interpolate(cam[None,None],size=(image.height,image.width),mode="bilinear",align_corners=False)[0,0].detach().cpu().numpy()
+    cam=(cam-cam.min())/(cam.max()-cam.min()+1e-8)
+    base=np.asarray(image).astype(np.float32); heat=np.zeros_like(base); heat[:,:,0]=cam*255
+    overlay=(.58*base+.42*heat).clip(0,255).astype("uint8")
+    return {"grade":grade,"class_name":CLASSES[grade],"probabilities":probs,"referable":grade>=2,"gradcam":Image.fromarray(overlay)}
+
 def predict(image_path,checkpoint=None):
     path=Path(checkpoint or ROOT/"artifacts"/"checkpoints"/"best_model.pt")
-    device=torch.device("cuda" if torch.cuda.is_available() else "cpu"); net,ck=load_model(path,device); size=int(ck["config"]["image_size"])
-    with Image.open(image_path) as im: image=im.convert("RGB"); x=transform(size,False)(image).unsqueeze(0).to(device)
-    z=net(x); p=z.softmax(1)[0].detach().cpu().tolist(); grade=int(np.argmax(p))
-    # Grad-CAM from EfficientNet's final feature block.
-    acts=[]; grads=[]; layer=net.features[-1]
-    h1=layer.register_forward_hook(lambda m,i,o:acts.append(o))
-    h2=layer.register_full_backward_hook(lambda m,gi,go:grads.append(go[0]))
-    net.zero_grad(set_to_none=True); net(x)[0,grade].backward(); h1.remove(); h2.remove()
-    cam=torch.relu((grads[-1][0].mean((1,2),keepdim=True)*acts[-1][0]).sum(0))
-    cam=torch.nn.functional.interpolate(cam[None,None],size=(image.height,image.width),mode="bilinear",align_corners=False)[0,0].detach().cpu().numpy()
-    cam=(cam-cam.min())/(cam.max()-cam.min()+1e-8); base=np.asarray(image).astype(np.float32); heat=np.zeros_like(base); heat[:,:,0]=cam*255
-    out=(.58*base+.42*heat).clip(0,255).astype("uint8")
-    dest=ROOT/"artifacts"/"gradcam"; dest.mkdir(parents=True,exist_ok=True); dest=dest/(Path(image_path).stem+"_gradcam.png"); Image.fromarray(out).save(dest)
-    print(f"Grade {grade}: {CLASSES[grade]}; referable: {'YES' if grade>=2 else 'NO'}")
-    print("Probabilities: "+", ".join(f"{CLASSES[i]}={p[i]:.3f}" for i in range(5))); print(f"Grad-CAM: {dest}")
-    print("Research prototype only; not a clinical diagnosis.")
+    device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    net,ck=load_model(path,device)
+    with Image.open(image_path) as im: result=predict_image(im,net,ck["config"],device)
+    dest=ROOT/"artifacts"/"gradcam"; dest.mkdir(parents=True,exist_ok=True)
+    overlay_path=dest/(Path(image_path).stem+"_gradcam.png"); result["gradcam"].save(overlay_path)
+    print(f"Grade {result['grade']}: {result['class_name']}; referable: {'YES' if result['referable'] else 'NO'}")
+    print("Probabilities: "+", ".join(f"{CLASSES[i]}={result['probabilities'][i]:.3f}" for i in range(5)))
+    print(f"Grad-CAM: {overlay_path}\nResearch prototype only; not a clinical diagnosis.")
+    result["gradcam_path"]=overlay_path
+    return result
+
 
 def main():
     ap=argparse.ArgumentParser(); sub=ap.add_subparsers(dest="cmd",required=True)
