@@ -1,5 +1,5 @@
 """Medical-themed local dashboard for the IDRiD research model."""
-import io,json,time
+import base64,io,json,time
 import sys
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
@@ -43,6 +43,44 @@ def load_json(path):
     try:return json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError,json.JSONDecodeError,OSError):return None
 def pct(x):return "—" if x is None else f"{100*x:.1f}%"
+def training_plot(history):
+    """Render fixed-scale training curves as a non-interactive PNG."""
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import MaxNLocator
+    frame=pd.DataFrame(history).set_index("epoch")
+    fig,axes=plt.subplots(2,1,figsize=(8.4,5.3),dpi=120)
+    for ax,(train_key,val_key,title) in zip(axes,(("train_loss","validation_loss","Loss per epoch"),("train_accuracy","validation_accuracy","Accuracy per epoch"))):
+        if train_key in frame:ax.plot(frame.index,frame[train_key],color="#a6d834",linewidth=2.5,label="Training")
+        if val_key in frame:ax.plot(frame.index,frame[val_key],color="#85897e",linewidth=2.2,label="Validation")
+        ax.set_title(title,loc="left",fontsize=11,fontweight="semibold",color="#30342c")
+        ax.set_xlim(1,max(int(frame.index.max()),2));ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        if "accuracy" in title.lower():ax.set_ylim(0,1)
+        ax.set_xlabel("Epoch");ax.grid(axis="y",color="#e8ebdf",linewidth=.8);ax.spines[["top","right"]].set_visible(False);ax.legend(frameon=False,loc="best")
+    fig.tight_layout();buffer=io.BytesIO();fig.savefig(buffer,format="png",dpi=150,bbox_inches="tight");plt.close(fig)
+    return buffer.getvalue()
+def screening_report(result):
+    """Create a one-page PDF report in memory for a completed screening demo."""
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+    fig=plt.figure(figsize=(8.27,11.69),facecolor="white")
+    grid=fig.add_gridspec(3,2,left=.09,right=.91,top=.93,bottom=.10,height_ratios=[.72,1.5,.5],hspace=.42,wspace=.20)
+    header=fig.add_subplot(grid[0,:]);header.axis("off")
+    header.add_patch(plt.Rectangle((0,.05),.018,.87,transform=header.transAxes,color="#a6d834",clip_on=False))
+    header.text(.06,.84,"RETINASCREEN  ·  UNIVERSITY RESEARCH DEMO",fontsize=9,color="#718d2b",weight="bold",transform=header.transAxes)
+    header.text(.06,.55,"Retinal image screening report",fontsize=19,color="#30342c",weight="bold",transform=header.transAxes)
+    header.text(.06,.20,f"Predicted grade {result['grade']} · {result['class_name']}     |     {('Referable' if result['referable'] else 'Non-referable')} by the project rule",fontsize=10,color="#55594f",transform=header.transAxes)
+    bars=fig.add_subplot(grid[1,0]);indices=list(range(len(CLASSES)));values=result["probabilities"]
+    bars.barh(indices,values,color=["#a6d834" if i==result["grade"] else "#d8ddcb" for i in indices],height=.62)
+    bars.set_yticks(indices,[f"{i} · {name}" for i,name in enumerate(CLASSES)]);bars.invert_yaxis();bars.set_xlim(0,1);bars.set_xlabel("Uncalibrated model score")
+    bars.set_title("Five-class outputs",loc="left",fontsize=12,weight="bold",color="#30342c");bars.grid(axis="x",color="#e8ebdf",linewidth=.8);bars.set_axisbelow(True);bars.spines[["top","right","left"]].set_visible(False)
+    cam=fig.add_subplot(grid[1,1]);cam.imshow(result["gradcam"]);cam.set_title("Grad-CAM sensitivity map",loc="left",fontsize=12,weight="bold",color="#30342c");cam.axis("off")
+    footer=fig.add_subplot(grid[2,:]);footer.axis("off");ranked=sorted(enumerate(values),key=lambda pair:pair[1],reverse=True);first,second=ranked[:2]
+    footer.text(0,.92,"How to read this result",fontsize=12,weight="bold",color="#30342c",transform=footer.transAxes)
+    footer.text(0,.63,f"The selected class had the highest output score ({pct(first[1])}); the next highest was {CLASSES[second[0]]} ({pct(second[1])}). Grades 2–4 are labeled referable by this project's simple rule.",fontsize=9.5,color="#55594f",wrap=True,transform=footer.transAxes)
+    footer.text(0,.08,"Grad-CAM is a post-hoc visual explanation, not lesion detection or clinical reasoning. This experimental university project is not clinically validated and must not guide care.",fontsize=8.5,color="#666a60",wrap=True,transform=footer.transAxes)
+    buffer=io.BytesIO()
+    with PdfPages(buffer) as pdf:pdf.savefig(fig,bbox_inches="tight",facecolor="white")
+    plt.close(fig);return buffer.getvalue()
 @st.cache_resource(show_spinner="Loading EfficientNet-B0…")
 def cached_model(path,modified):
     device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -75,10 +113,9 @@ with overview:
     with left:
         st.markdown("#### Training history")
         if history:
-            h=pd.DataFrame(history).set_index("epoch")
-            if {"train_loss","validation_loss"}.issubset(h.columns):st.line_chart(h[["train_loss","validation_loss"]],height=235,color=["#9cc83b","#b6b9ae"])
-            if {"train_accuracy","validation_accuracy"}.issubset(h.columns):st.line_chart(h[["train_accuracy","validation_accuracy"]],height=215,color=["#9cc83b","#b6b9ae"])
-            st.caption("Checkpoint selected by validation loss. Validation contains 80 images.")
+            chart=base64.b64encode(training_plot(history)).decode("ascii")
+            st.html(f'<img src="data:image/png;base64,{chart}" alt="Fixed-scale training and validation loss and accuracy curves" style="display:block;width:100%;height:auto;pointer-events:none;user-select:none;border-radius:8px;">')
+            st.caption("Fixed-scale static charts · checkpoint selected by validation loss · validation contains 80 images.")
         else:st.info("Training curves appear after a training run.")
     with right:
         st.markdown("#### Referable DR rule")
@@ -110,12 +147,18 @@ with screen:
                     st.markdown('<div class="eyebrow">Your image</div>',unsafe_allow_html=True)
                     st.image(image,width=300,caption=f"{image.width} × {image.height} · {upload.name}")
                     if st.button("Run screening and create map",type="primary",width="stretch"):
-                        try:
-                            net,ck,device=cached_model(str(CHECKPOINT.resolve()),CHECKPOINT.stat().st_mtime_ns)
-                            start=time.perf_counter()
-                            with st.spinner("Reading image features and creating the sensitivity map…"):out=predict_image(image,net,ck["config"],device)
-                            st.session_state["screen_result"]={**out,"elapsed":time.perf_counter()-start,"filename":upload.name}
-                        except Exception as exc:st.error(f"Inference failed: {exc}")
+                        with st.status("Preparing the image analysis…",expanded=True) as progress:
+                            try:
+                                progress.write("Loading the trained EfficientNet-B0 checkpoint.")
+                                net,ck,device=cached_model(str(CHECKPOINT.resolve()),CHECKPOINT.stat().st_mtime_ns)
+                                progress.write("Calculating the five class scores and Grad-CAM map.")
+                                start=time.perf_counter()
+                                with st.spinner("The model is analyzing your image…"):out=predict_image(image,net,ck["config"],device)
+                                st.session_state["screen_result"]={**out,"elapsed":time.perf_counter()-start,"filename":upload.name}
+                                progress.update(label="Analysis complete · prediction and map are ready",state="complete",expanded=False)
+                            except Exception as exc:
+                                progress.update(label="Analysis could not be completed",state="error",expanded=True)
+                                st.error(f"Inference failed: {exc}")
             with details:
                 with st.container(border=True):
                     st.markdown('<div class="eyebrow">What happens next</div>',unsafe_allow_html=True)
@@ -123,7 +166,10 @@ with screen:
         elif not upload:
             st.markdown('<div class="upload-card"><div class="eyebrow">A simple three-step study</div><br><span class="step-dot">1</span>Choose a JPEG or PNG&nbsp;&nbsp; <span class="step-dot">2</span>Run the local model&nbsp;&nbsp; <span class="step-dot">3</span>Explore the prediction and map<br><br><span class="small-note">For best results, use a centered, well-lit fundus image at least 224 pixels on each side.</span></div>',unsafe_allow_html=True)
         if upload and result and result.get("filename")==upload.name:
-            st.divider();st.markdown('<div class="eyebrow">Your model readout</div>',unsafe_allow_html=True);st.markdown("### Prediction and visual explanation");left,right=st.columns([.9,1.1],gap="large")
+            st.divider();title,download=st.columns([.72,.28],vertical_alignment="center")
+            with title:st.markdown('<div class="eyebrow">Your model readout</div><h3>Prediction and visual explanation</h3>',unsafe_allow_html=True)
+            with download:st.download_button("Download report (PDF)",data=screening_report(result),file_name="retinascreen_screening_report.pdf",mime="application/pdf",width="stretch")
+            left,right=st.columns([.9,1.1],gap="large")
             with left:
                 flag="Referable · grade 2–4" if result["referable"] else "Non-referable · grade 0–1"
                 st.markdown(f'<div class="card"><div class="muted">Predicted severity</div><div class="grade">Grade {result["grade"]} · {result["class_name"]}</div><p><span class="pill">{flag}</span></p><span class="muted">Processed in {result["elapsed"]:.2f} s · uncalibrated probabilities</span></div>',unsafe_allow_html=True)

@@ -77,7 +77,7 @@ Grad-CAM targets EfficientNet-B0's final feature block and indicates gradient se
 
 ## Optional Streamlit UI
 
-The command-line demo covers prediction and visualization. Run this small UI after training:
+The command-line demo covers prediction and visualization. Run this UI after training to review fixed-scale training charts, screen one image locally, inspect Grad-CAM, and download a one-page PDF report:
 ```powershell
 streamlit run app/app.py
 ```
