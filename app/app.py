@@ -15,11 +15,8 @@ REPORTS=ROOT/"reports"
 st.set_page_config(page_title="RetinaScreen | DR Research",page_icon="◉",layout="wide")
 st.markdown("""
 <style>
-.stApp{background:radial-gradient(ellipse at 9% 4%,#eaf5ef 0,transparent 38%),radial-gradient(ellipse at 94% 62%,#edf3fa 0,transparent 38%),linear-gradient(135deg,#f8fbf9 0%,#f5f8fc 100%);color:#30342c;position:relative}
-.stApp:before,.stApp:after{position:fixed;z-index:0;pointer-events:none;color:#9bbcb0;font-family:Arial,sans-serif;font-weight:400;opacity:.22}
-.stApp:before{content:"✚";font-size:2.25rem;right:3.2%;top:34%}
-.stApp:after{content:"◉";font-size:2.6rem;left:2.2%;bottom:12%;color:#94b4c2}
-.block-container{max-width:1280px;padding-top:1.3rem;padding-bottom:3rem;position:relative;z-index:1}
+.stApp{background:radial-gradient(ellipse at 9% 4%,#eaf5ef 0,transparent 38%),radial-gradient(ellipse at 94% 62%,#edf3fa 0,transparent 38%),linear-gradient(135deg,#f8fbf9 0%,#f5f8fc 100%);color:#30342c}
+.block-container{max-width:1280px;padding-top:1.3rem;padding-bottom:3rem}
 [data-testid="stSidebar"]{background:rgba(248,251,249,.92);border-right:1px solid #e4ece7}
 [data-testid="stMetric"]{background:#fff;border:1px solid #e9ecdf;padding:.9rem 1rem;border-radius:14px;box-shadow:0 4px 18px #25291c08}
 [data-testid="stMetricLabel"] p{color:#70736a!important;font-size:.82rem}[data-testid="stMetricValue"]{color:#30342c;font-weight:700}
@@ -30,6 +27,7 @@ st.markdown("""
 [data-testid="stFileUploader"] section{border:1px dashed #b4d65e;background:#fff;border-radius:14px}
 .hero{position:relative;overflow:hidden;background:#fff;border:1px solid #edf0e7;border-left:7px solid #b9e34c;border-radius:20px;padding:1.2rem 1.7rem;margin:.25rem 0 .7rem;box-shadow:0 8px 28px #25291c08}
 .hero:after{content:"";position:absolute;width:160px;height:160px;border:20px solid #eff7d8;border-radius:50%;right:48px;top:-66px;pointer-events:none}
+.hero:before{content:"✚";position:absolute;right:2.5rem;bottom:1rem;color:#dce9d4;font-size:1.65rem;pointer-events:none}
 .hero .eyebrow{color:#718d2b;text-transform:uppercase;letter-spacing:.13em;font-weight:750;font-size:.72rem}
 .hero h1{color:#30342c;margin:.35rem 0 .25rem;font-size:1.85rem}.hero p{color:#666a60;margin:0;max-width:780px}
 .note{background:#f8faef;border:1px solid #edf1dd;border-left:4px solid #b9e34c;padding:.72rem 1rem;border-radius:9px;color:#494d42;margin:.6rem 0 1rem}
