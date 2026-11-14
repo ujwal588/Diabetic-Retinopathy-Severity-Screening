@@ -1,0 +1,34 @@
+{
+  "method": "stratified paired bootstrap; resampled within true grade",
+  "seed": 42,
+  "repetitions": 5000,
+  "n": 102,
+  "interval": "percentile 95%",
+  "metrics": {
+    "accuracy": {
+      "estimate": 0.5098039215686274,
+      "lower_95": 0.4215686274509804,
+      "upper_95": 0.5980392156862745
+    },
+    "macro_f1": {
+      "estimate": 0.41007803790412484,
+      "lower_95": 0.3272355183565623,
+      "upper_95": 0.4907984564455153
+    },
+    "quadratic_weighted_kappa": {
+      "estimate": 0.6564003849855631,
+      "lower_95": 0.5334940790320581,
+      "upper_95": 0.7626995926649873
+    },
+    "referable_sensitivity": {
+      "estimate": 0.873015873015873,
+      "lower_95": 0.7936507936507936,
+      "upper_95": 0.9523809523809523
+    },
+    "referable_specificity": {
+      "estimate": 0.7692307692307693,
+      "lower_95": 0.6410256410256411,
+      "upper_95": 0.8974358974358975
+    }
+  }
+}
